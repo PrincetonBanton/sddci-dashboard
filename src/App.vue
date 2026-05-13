@@ -1,75 +1,110 @@
 <template>
-  <div class="app-container">
-    <div class="card">
-      <h2>Sodaco Legacy Link</h2>
-      <p>Modernizing Access Database (.mdb) to SQLite</p>
-      
-      <div class="drop-zone" @click="handleFileSelect" :class="{ 'has-file': selectedPath }">
-        <div v-if="!selectedPath">
-          <p>Click to select the <strong>.mdb</strong> file</p>
-          <button class="btn-browse">Browse System Files</button>
-        </div>
-        <div v-else>
-          <p>Targeting: <strong>{{ fileInfo.name }}</strong> 
-            <span @click.stop="resetSelection" class="change-link">(Change)</span>
-          </p>
-          <code>{{ selectedPath }}</code>
-        </div>
-      </div>
+  <div class="app-layout">
+    <aside class="sidebar">
+  <img src="/sodaco.png" style="width: 80px; margin-bottom: 20px; " />
 
-      <div v-if="selectedPath" class="action-area">
-        <button @click="confirmPath" :disabled="isMigrating" class="btn-confirm">
-          {{ isMigrating ? '⚡ Migrating Data...' : 'Confirm & Connect' }}
+      <nav class="nav-stack">
+        <div class="nav-item active">📊 Dashboard</div>
+        <div class="nav-item">📦 Inventory</div>
+        <div class="nav-item">📈 Analysis</div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-status" :class="{ 'connected': selectedPath }">
+          <button v-if="!selectedPath" @click="handleFileSelect" class="btn-green">
+            BROWSE DATABASE
+          </button>
+          <div v-else class="file-mini-info">
+            <p class="filename">{{ fileInfo.name }}</p>
+            <button @click.stop="resetSelection" class="btn-text-reset">DISCONNECT</button>
+          </div>
+        </div>
+
+        <button v-if="selectedPath" @click="confirmPath" :disabled="isMigrating" class="btn-green">
+          {{ isMigrating ? '⚡ Syncing...' : 'SYNC DATABASE' }}
         </button>
       </div>
+    </aside>
 
-      <div v-if="mainTableInfo.name" class="inspector-card">
-        <div class="badge">{{ detectedType }}</div>
-        <h3>🛠️ {{ mainTableInfo.name }} Properties</h3>
-        <p>The following fields were discovered for future analysis:</p>
-        
-        <div class="property-tags">
-          <span v-for="col in mainTableInfo.columns" :key="col.name" class="tag">
-            {{ col.name }}
-          </span>
+    <main class="main-canvas">
+      <header class="top-header">
+        <div class="header-titles">
+          <div class="type-badge" v-if="detectedType || locations.length > 0">
+            <div v-if="detectedType"><strong> {{ detectedType.toUpperCase() }} : </strong></div>
+            <div v-if="locations.length > 0" >
+                <div v-for="(loc, i) in locations" :key="loc">
+                  {{ loc }}{{ i < locations.length - 1 ? ', ' : '' }}
+                </div>
+              </div>
+          </div>
+          <div v-else class="type-badge">LEGACY MIGRATION LINK</div>
         </div>
-        
-        <div class="hint-box">
-          <span v-if="mainTableInfo.name === 'DRDetails'">
-            💡 <strong>Ready:</strong> We can now calculate kilos per Block/Phase.
-          </span>
-          <span v-else>
-            💡 <strong>Ready:</strong> We can now track Material Issuance costs.
-          </span>
+      </header>
+
+      <section class="workspace">
+        <div class="toolbar">
+          <div class="date-picker-group">
+            <div class="input-field"><label>Start Date</label><input type="date" v-model="dateRange.start" /></div>
+            <div class="input-field"><label>End Date</label><input type="date" v-model="dateRange.end" /></div>
+            <button class="btn-green" @click="handleDateCheck">GO</button>
+          </div>
         </div>
-      </div>
-    </div>
+
+        <div class="insight-item">
+          <div v-if="mainTableInfo.name">
+            {{ mainTableInfo.name === 'DRDetails' ? 'Production -' : 'Issuance -' }}
+            {{ mainTableInfo.name === 'DRDetails' ? 'Ready to process Block/Phase weights.' : 'Ready to track material costs.' }}
+          </div>
+          <div v-else>Connect a database to view system logic.</div>
+        </div>
+
+      </section>
+    </main>
   </div>
 </template>
 
 <script setup>
 import { useMigration } from './composables/useMigration'
-
-const {
-  selectedPath, isMigrating, fileInfo, detectedType,
-  mainTableInfo, handleFileSelect, confirmPath, resetSelection
-} = useMigration()
+const { selectedPath, isMigrating, fileInfo, detectedType, mainTableInfo, handleFileSelect, confirmPath, resetSelection, dateRange, handleDateCheck, locations } = useMigration()
 </script>
 
 <style scoped>
-/* Scoped styles remain the same as your previous version */
-.app-container { padding: 2rem; background: #f4f7f6; min-height: 100vh; }
-.card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 800px; margin: 0 auto; text-align: center; }
-.drop-zone { border: 2px dashed #646cff; padding: 2rem; border-radius: 12px; cursor: pointer; transition: 0.3s; background: #fafaff; }
-.drop-zone:hover { background: #f0f0ff; border-color: #535bf2; }
-.has-file { border-style: solid; background: #f0fdf4; border-color: #22c55e; }
-.btn-confirm { margin-top: 1rem; background: #646cff; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
-.btn-confirm:disabled { background: #ccc; cursor: not-allowed; }
-.change-link { color: #646cff; cursor: pointer; margin-left: 10px; font-size: 0.8rem; text-decoration: underline; }
-.inspector-card { margin-top: 2rem; padding: 1.5rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; text-align: left; }
-.badge { display: inline-block; background: #646cff; color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; margin-bottom: 10px; }
-.property-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; }
-.tag { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 10px; border-radius: 6px; font-size: 0.85rem; color: #475569; font-family: monospace; }
-.hint-box { background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px; font-size: 0.9rem; color: #92400e; }
-code { display: block; font-size: 0.7rem; margin-top: 5px; color: #666; }
+/* --- 1. CORE LAYOUT --- */
+.app-layout { display: flex; height: 100vh; background: #f9fafb; color: #064e3b; font-family: 'Segoe UI', sans-serif; }
+.main-canvas { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* --- 2. SIDEBAR NAVIGATION --- */
+.sidebar { width: 260px; background: #ffffff; border-right: 1px solid #d1fae5; display: flex; flex-direction: column; padding: .5rem; }
+.nav-stack { flex: 1; }
+.nav-item { padding: 12px 16px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; font-weight: 500; color: #374151; transition: 0.2s; }
+.nav-item:hover { background: #f0fdf4; color: #10b981; }
+.nav-item.active { background: #ecfdf5; color: #059669; }
+
+/* --- 3. SIDEBAR CONNECTION & SYNC --- */
+.sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
+.sidebar-status { background: #f3f4f6; padding: 1rem; border-radius: 12px; font-size: 0.85rem; min-height: 85px; display: flex; flex-direction: column; justify-content: center; transition: 0.3s; }
+.sidebar-status.connected { background: #ecfdf5; border: 1px solid #10b981; }
+.file-mini-info .filename { font-weight: 600; color: #065f46; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+
+/* --- BUTTONS --- */
+.btn-text-reset { background: none; border: none; color: #ef4444; padding: 0; cursor: pointer; font-size: 0.75rem; font-weight: 700; text-align: left; }
+.btn-green { background: #064e3b; color: white; border: none; padding: 12px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: 0.2s; font-size: 0.9rem; }
+.btn-green:hover { background: #065f46; transform: translateY(-1px); }
+.btn-green:disabled { background: #9ca3af; cursor: not-allowed; }
+
+/* --- 4. TOP HEADER & BADGES --- */
+.top-header { padding: 1rem; background: white; border-bottom: 1px solid #d1fae5; display: flex; align-items: center; min-height: 10px; }
+.type-badge { display: flex; align-items: center; gap: 12px; background: #d1fae5; color: #065f46; padding: 10px 20px; border-radius: 50px; }
+
+/* --- 5. WORKSPACE & TOOLS --- */
+.workspace { padding: 2.5rem; overflow-y: auto; flex: 1; }
+.toolbar { margin-bottom: 2rem; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e5e7eb; }
+.date-picker-group { display: flex; gap: 20px; align-items: flex-end; }
+.input-field { display: flex; flex-direction: column; gap: 4px; }
+.input-field label { font-size: 0.7rem; font-weight: 700; color: #6b7280; text-transform: uppercase; }
+.input-field input { border: 1px solid #d1d5db; padding: 6px; border-radius: 4px; outline-color: #10b981; }
+
+/* --- 6. DATA BLOCKS & INSIGHTS --- */
+.insight-item { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 1rem; color: #92400e; border-radius: 4px;}
 </style>

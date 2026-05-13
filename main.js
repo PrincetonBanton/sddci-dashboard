@@ -2,42 +2,26 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import isDev from 'electron-is-dev';
-import { runMigration } from './src/migration-util.js'; // Import the worker
+import { setupIpcHandlers } from './src/ipc-handlers.js'; // Import our new handlers
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 1200, height: 800,
+    show: false, // Don't show the window until it's ready and maximized
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
       sandbox: false,
     },
   });
-
+  win.maximize();
   win.loadURL(isDev ? 'http://localhost:5173' : `file://${path.join(__dirname, 'dist/index.html')}`);
 }
 
-// --- FILE PICKER ---
-ipcMain.handle('select-file', async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog({
-    properties: ['openFile'],
-    filters: [{ name: 'Access Databases', extensions: ['mdb'] }]
-  });
-  return canceled ? null : filePaths[0];
-});
-
-// --- MIGRATION TRIGGER ---
-ipcMain.on('save-mdb-path', async (event, mdbPath) => {
-  try {
-    const result = await runMigration(mdbPath);
-    event.reply('migration-finished', result);
-  } catch (err) {
-    console.error("Migration Error:", err);
-    event.reply('migration-finished', { success: false, error: err.message });
-  }
-});
+// Initialize our IPC bridge
+setupIpcHandlers(ipcMain, dialog);
 
 // App Lifecycle
 app.whenReady().then(createWindow);
